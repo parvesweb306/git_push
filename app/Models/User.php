@@ -58,6 +58,11 @@ class User extends Authenticatable
     return $this->hasMany(Device::class);
 }
 
+    public function familyInviteLinks()
+    {
+        return $this->hasMany(FamilyInviteLink::class);
+    }
+
     /**
      * Sub-users created by this (main admin) account.
      */

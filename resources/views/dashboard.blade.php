@@ -98,6 +98,7 @@
         }
 
         .nav-link:hover { background: rgba(201, 162, 75, .14); color: var(--gold-light); }
+        .nav-link.active { background: rgba(201, 162, 75, .18); color: var(--gold-light); }
 
         .user-chip {
             display: flex;
@@ -146,10 +147,40 @@
         /* ---------- Layout ---------- */
 
         .container {
-            max-width: 1000px;
+            max-width: 1180px;
             margin: 0 auto;
             padding: 30px 20px 60px;
         }
+
+        .page-heading {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 22px;
+        }
+
+        .page-heading h1 { font-size: 25px; color: var(--navy); }
+        .page-heading p { color: var(--muted); font-size: 13px; margin-top: 5px; }
+
+        .family-links-cta {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 11px 16px;
+            border: 1px solid #d8ddeb;
+            border-radius: 10px;
+            color: var(--navy);
+            background: white;
+            font-size: 13px;
+            font-weight: 700;
+            text-decoration: none;
+            box-shadow: var(--shadow);
+            white-space: nowrap;
+        }
+
+        .family-links-cta:hover { border-color: var(--gold); color: #80621a; }
 
         .stats-row {
             display: grid;
@@ -454,6 +485,8 @@
             .form-row { flex-direction: column; }
             .topbar { padding: 14px 16px; flex-wrap: wrap; gap: 10px; }
             .topbar-right { gap: 12px; flex-wrap: wrap; }
+            .page-heading { align-items: flex-start; flex-direction: column; }
+            .family-links-cta { width: 100%; }
         }
 
     </style>
@@ -461,18 +494,6 @@
 </head>
 <body>
 
-<div style="max-width:700px;margin:20px auto;padding:18px;border:1px solid #ddd;border-radius:12px">
-    <h2>multiple install link</h2>
-    <p>এই link নতুন multiple phone-এ খুলে Play Store থেকে app install করুন:</p>
-    <input
-        type="text"
-        readonly
-        value="{{ $familyLink }}"
-        onclick="this.select()"
-        style="width:100%;padding:12px;margin-top:8px"
-    >
-    <p style="margin-top:8px">Link-টি copy করে নতুন phone-এ পাঠাতে পারবেন।</p>
-</div>
 <div class="topbar">
 
     <div class="brand">
@@ -487,6 +508,9 @@
                 👤 Users ম্যানেজ করুন
             </a>
         @endif
+        <a href="{{ route('family-links.index') }}" class="nav-link">
+            🔗 Family links
+        </a>
 
         <a href="{{ route('profile.edit') }}" class="nav-link">
             ⚙️ Profile
@@ -517,6 +541,14 @@
 </div>
 
 <div class="container">
+
+    <div class="page-heading">
+        <div>
+            <h1>ডিভাইস ড্যাশবোর্ড</h1>
+            <p>{{ auth()->user()->isAdmin() ? 'আপনার এবং আপনার অধীনে থাকা user-দের device এক জায়গায় দেখুন।' : 'আপনার family device-গুলো এক জায়গা থেকে পরিচালনা করুন।' }}</p>
+        </div>
+        <a href="{{ route('family-links.index') }}" class="family-links-cta">🔗 Family link পরিচালনা</a>
+    </div>
 
     <div class="stats-row">
 
@@ -618,7 +650,7 @@
 
 
     <div class="card">
-        <h2>📱 আমার সব Device</h2>
+        <h2>📱 {{ auth()->user()->isAdmin() ? 'সব Device' : 'আমার সব Device' }} <span style="font-size:12px;color:var(--muted);font-weight:600">({{ $devices->count() }})</span></h2>
 
         @if($devices->count() === 0)
 
@@ -798,11 +830,6 @@
         ↗️ Download / Pairing পেজ খুলুন
     </a>
 @endif
-
-                        <a href="{{ $deviceLink }}" target="_blank" class="open-link">
-                            ↗️ Download / Pairing পেজ খুলুন
-                        </a>
-
 
                         <div class="actions">
 

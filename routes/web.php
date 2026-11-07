@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DeviceController;
+use App\Http\Controllers\FamilyInviteController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -35,6 +36,31 @@ Route::middleware([
         '/dashboard/status',
         [DeviceController::class, 'dashboardStatus']
     )->name('dashboard.status');
+
+    Route::get(
+        '/family-links',
+        [FamilyInviteController::class, 'index']
+    )->name('family-links.index');
+
+    Route::post(
+        '/family-links',
+        [FamilyInviteController::class, 'store']
+    )->name('family-links.store');
+
+    Route::delete(
+        '/family-links/{familyInviteLink}',
+        [FamilyInviteController::class, 'destroy']
+    )->name('family-links.destroy');
+
+    Route::delete(
+        '/family-links/legacy/{user}',
+        [FamilyInviteController::class, 'destroyLegacy']
+    )->name('family-links.legacy.destroy');
+
+    Route::post(
+        '/family-link/rotate',
+        [DeviceController::class, 'rotateFamilyInvite']
+    )->name('family.rotate');
 
     Route::get(
     '/telegram/connect',

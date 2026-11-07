@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Device;
+use App\Models\FamilyInviteLink;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
@@ -23,30 +24,46 @@ class DeviceController extends Controller
 public function index(Request $request)
 {
     $user = $request->user();
+    $userIds = $user->isAdmin()
+        ? $user->subUsers()->pluck('id')->push($user->id)
+        : collect([$user->id]);
 
-    if (empty($user->family_invite_code)) {
-        do {
-            $code = strtoupper(Str::random(32));
-        } while (
-            User::where('family_invite_code', $code)->exists()
-        );
-
-        $user->forceFill([
-            'family_invite_code' => $code,
-        ])->save();
-    }
-
-    $devices = Device::where('user_id', $user->id)
+    $devices = Device::whereIn('user_id', $userIds)
+        ->with('user')
         ->latest()
         ->get();
 
-    $familyLink = route(
-        'family.install',
-        $user->family_invite_code
+    return view('dashboard', compact('devices'));
+}
+
+public function rotateFamilyInvite(Request $request)
+{
+    do {
+        $code = strtoupper(Str::random(32));
+    } while (
+        User::where('family_invite_code', $code)->exists()
+        ||         FamilyInviteLink::where('code', $code)->exists()
     );
 
-    return view('dashboard', compact('devices', 'familyLink'));
+    $request->user()->forceFill([
+        'family_invite_code' => $code,
+    ])->save();
+
+    return redirect()
+        ->route('dashboard')
+        ->with('status', 'পুরোনো family link বাতিল করে নতুন link তৈরি হয়েছে।');
 }
+
+    public function destroy(Request $request, Device $device)
+    {
+        $this->authorizeDevice($request, $device);
+        $deviceName = $device->device_name;
+        $device->delete();
+
+        return redirect()
+            ->route('dashboard')
+            ->with('success', $deviceName . ' মুছে ফেলা হয়েছে।');
+    }
 
 
     /*
@@ -596,10 +613,12 @@ public function downloadPage(string $code)
     public function dashboardStatus(
         Request $request
     ) {
-        $devices = Device::where(
-            'user_id',
-            $request->user()->id
-        )
+        $user = $request->user();
+        $userIds = $user->isAdmin()
+            ? $user->subUsers()->pluck('id')->push($user->id)
+            : collect([$user->id]);
+
+        $devices = Device::whereIn('user_id', $userIds)
         ->latest()
         ->get();
 
@@ -647,11 +666,12 @@ public function downloadPage(string $code)
         Request $request,
         Device $device
     ): void {
-        abort_unless(
-            $device->user_id ===
-                $request->user()->id,
-            403
-        );
+        $user = $request->user();
+        $isOwner = (int) $device->user_id === (int) $user->id;
+        $isManagedByAdmin = $user->isAdmin()
+            && $user->subUsers()->whereKey($device->user_id)->exists();
+
+        abort_unless($isOwner || $isManagedByAdmin, 403);
     }
 
 
@@ -661,7 +681,11 @@ public function familyInstall(string $code)
 {
     $code = strtoupper(trim($code));
 
-    $user = User::where('family_invite_code', $code)->first();
+    $inviteLink = FamilyInviteLink::where('code', $code)
+        ->with('user')
+        ->first();
+    $user = $inviteLink?->user
+        ?? User::where('family_invite_code', $code)->first();
 
     if (!$user) {
         abort(404, 'Invalid family install link.');
@@ -716,6 +740,13 @@ public function enrollFamily(
         )
         ->lockForUpdate()
         ->first();
+
+        if (!$parent) {
+            $inviteLink = FamilyInviteLink::where('code', $inviteCode)
+                ->lockForUpdate()
+                ->first();
+            $parent = $inviteLink?->user;
+        }
 
         if (!$parent) {
             return null;
